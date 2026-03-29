@@ -18,22 +18,7 @@ export function createServer(): McpServer {
         tools: {},
         prompts: {},
       },
-      instructions: `git-recipe manages recipes stored as markdown files in GitHub repositories.
-
-Capabilities:
-- List, create, read, update, delete, and search recipes (markdown files with YAML frontmatter)
-- List and create cookbooks (GitHub repos with a .gitrecipe marker)
-- View commit history for cookbooks and individual recipes
-- Import recipes from URLs
-
-Limitations — do NOT suggest these:
-- No image/photo support
-- No folders or categories — recipes are a flat list, organized by tags only
-- No branches or pull requests
-- No meal planning, shopping lists, or cooking mode
-- No social features (following, starring)
-
-Recipe frontmatter fields: title (required), tags, servings, source. No other fields.`,
+      instructions: `git-recipe stores recipes as markdown files in GitHub repos. Each cookbook is a repo with a .gitrecipe marker. Recipes are flat (no folders) and organized by tags. Frontmatter fields: title (required), tags, servings, source.`,
     },
   )
 
