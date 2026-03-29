@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
   const username = formData.get('username') as string
   const password = formData.get('password') as string
 
-  if (username !== 'test_user' || password !== 'hunter2') {
+  if (username !== 'test_user' || password !== 'git-recipe-test-2026') {
     return new Response(
       `<!DOCTYPE html>
 <html><head><title>git-recipe — error</title></head>
