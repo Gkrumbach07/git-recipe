@@ -77,22 +77,22 @@ export function RecipeViewer({ owner, repo, path, branch }: RecipeViewerProps) {
     <div className="font-mono">
       <AsciiHeader frontmatter={recipe.frontmatter} />
 
-      <div className="flex gap-2 mb-6">
+      <div className="flex flex-wrap gap-2 mb-6">
         <Link
           href={editPath}
-          className="border border-border px-3 py-1 text-sm hover:bg-muted text-foreground"
+          className="border border-border px-3 py-1 text-sm hover:bg-muted text-foreground whitespace-nowrap"
         >
           [ Edit ]
         </Link>
         <Link
           href={historyPath}
-          className="border border-border px-3 py-1 text-sm hover:bg-muted text-foreground"
+          className="border border-border px-3 py-1 text-sm hover:bg-muted text-foreground whitespace-nowrap"
         >
           [ History ]
         </Link>
         <button
           onClick={() => setShowDelete(true)}
-          className="border border-border px-3 py-1 text-sm hover:bg-destructive/20 text-destructive"
+          className="border border-border px-3 py-1 text-sm hover:bg-destructive/20 text-destructive whitespace-nowrap"
         >
           [ Delete ]
         </button>

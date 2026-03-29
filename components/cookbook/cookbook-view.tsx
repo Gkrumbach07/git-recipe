@@ -37,30 +37,29 @@ export function CookbookView({
   }
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
+    <div className="p-4 sm:p-6 max-w-4xl mx-auto">
       {/* Breadcrumb */}
-      <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
-        <Link href="/dashboard" className="hover:text-foreground">
+      <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4 overflow-x-auto">
+        <Link href="/dashboard" className="hover:text-foreground whitespace-nowrap">
           ~/cookbooks
         </Link>
         <span>/</span>
         <Link
           href={`/cookbook/${owner}/${repo}`}
-          className="hover:text-foreground"
+          className="hover:text-foreground whitespace-nowrap"
         >
-          {owner}/{repo}
+          {repo}
         </Link>
       </div>
 
       {/* Toolbar */}
-      <div className="flex items-center gap-2 mb-4 flex-nowrap overflow-x-auto">
+      <div className="flex items-center gap-2 mb-4 flex-wrap">
         <Link
           href={`/cookbook/${owner}/${repo}/recipe/new`}
           className="border border-primary text-primary px-3 py-1 text-sm hover:bg-primary hover:text-primary-foreground transition-colors whitespace-nowrap"
         >
           [ + recipe ]
         </Link>
-        <div className="flex-1" />
         <Link
           href={`/cookbook/${owner}/${repo}/history`}
           className="border border-border text-muted-foreground px-3 py-1 text-sm hover:text-foreground transition-colors whitespace-nowrap"
