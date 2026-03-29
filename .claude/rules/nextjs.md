@@ -39,7 +39,6 @@ app/                        # Routing only — no shared logic here
           page.tsx
           [number]/page.tsx
         history/page.tsx
-        tree/[branch]/[...path]/page.tsx
   api/                      # Route handlers (REST endpoints)
     auth/
       login/route.ts

@@ -32,14 +32,12 @@ description: GitHub API client and data fetching patterns
 - Recipe CRUD via Contents API (`/repos/{owner}/{repo}/contents/{path}`)
 - Move/rename via Git Data API for single-commit tree operations
 - Each save = a commit. Auto-generate commit messages (e.g., `Add "Recipe Title"`)
-- `updated` frontmatter field set automatically on edit
 
 ## Domain Vocabulary in Code
 
 Use domain terms in variable/function names:
 - `cookbook` not `repo/repository`
 - `recipe` not `file/document`
-- `section` not `folder/directory`
 - `draft` not `branch`
 - `suggestion` not `pullRequest/pr`
 - `revision` not `commit`

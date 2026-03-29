@@ -50,4 +50,5 @@ npm run typecheck       # TypeScript check
 - **Server components by default.** Only add `'use client'` for interactive leaves (editors, dropdowns, forms).
 - **Terminal theme.** Dark monospace UI — no rounded corners, no gradients, no shadows. ASCII-style borders. See `.claude/rules/theme.md`.
 - **Recipe format.** Markdown files with YAML frontmatter. Freeform body. See SPEC.md for schema.
-- **Domain vocabulary.** Cookbook = repo, Recipe = .md file, Section = folder, Draft = branch, Suggestion = PR, Revision = commit. Use these terms in UI, never git terms.
+- **Flat recipe list.** No folders/sections. Recipes are organized by tags only.
+- **Domain vocabulary.** Cookbook = repo, Recipe = .md file. Use git terms directly in UI for everything else: branch, pull request (PR), commit.

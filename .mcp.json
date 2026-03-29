@@ -6,6 +6,16 @@
     "next-devtools": {
       "command": "npx",
       "args": ["-y", "next-devtools-mcp@latest"]
+    },
+    "playwright": {
+      "command": "npx",
+      "args": ["@playwright/mcp@latest", "--extension"],
+      "env": {
+        "PLAYWRIGHT_MCP_EXTENSION_TOKEN": "mHeddR56XwzmgLaoNR5oMg8hCYb46OHUgUZEa_mHdHY"
+      }
+    },
+    "vercel": {
+      "url": "https://mcp.vercel.com"
     }
   }
 }

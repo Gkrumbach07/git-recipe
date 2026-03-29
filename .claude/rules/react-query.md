@@ -69,7 +69,6 @@ Keep query/mutation factories in `lib/queries/`. One file per domain:
 lib/queries/
   cookbooks.ts    # list, create, delete, fork
   recipes.ts      # list, read, create, update, delete, move, search
-  sections.ts     # list, create
   drafts.ts       # list branches, create, delete
   suggestions.ts  # list PRs, create, merge
   history.ts      # commit log
@@ -83,7 +82,7 @@ Each factory exports `queryOptions()` and mutation hooks.
 |---|---|---|
 | Cookbooks list | 5m | Rarely changes mid-session |
 | Recipe content | 5m | Usually the only editor |
-| Recipe list (folder) | 2m | May add/move files |
+| Recipe list | 2m | May add recipes |
 | Branches | 30s | Changes during draft workflows |
 | Suggestions (PRs) | 30s | Active collaboration |
 | History | 5m | Append-only |

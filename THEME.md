@@ -1,0 +1,211 @@
+# Terminal Theme — Gruvbox Dark for shadcn/ui + Tailwind v4
+
+A dark, monospace, terminal-inspired theme for Next.js apps using shadcn/ui and Tailwind CSS v4. No rounded corners, no shadows, no gradients — just ASCII-style borders and a Gruvbox color palette.
+
+---
+
+## Quick Start
+
+### 1. Install dependencies
+
+```bash
+npm install @tailwindcss/typography tw-animate-css
+```
+
+### 2. Set up the font
+
+In your root `layout.tsx`, import JetBrains Mono:
+
+```tsx
+import { JetBrains_Mono } from "next/font/google";
+
+const jetbrainsMono = JetBrains_Mono({
+  variable: "--font-jetbrains-mono",
+  subsets: ["latin"],
+});
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="en" className={`dark ${jetbrainsMono.variable}`}>
+      <body className="font-mono antialiased">
+        {children}
+      </body>
+    </html>
+  );
+}
+```
+
+### 3. Replace your `globals.css`
+
+```css
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@plugin "@tailwindcss/typography";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-jetbrains-mono);
+  --font-mono: var(--font-jetbrains-mono);
+  --font-heading: var(--font-jetbrains-mono);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+.dark {
+  --background: #1d2021;
+  --foreground: #ebdbb2;
+  --card: #282828;
+  --card-foreground: #ebdbb2;
+  --popover: #282828;
+  --popover-foreground: #ebdbb2;
+  --primary: #b8bb26;
+  --primary-foreground: #1d2021;
+  --secondary: #8ec07c;
+  --secondary-foreground: #1d2021;
+  --muted: #504945;
+  --muted-foreground: #a89984;
+  --accent: #fabd2f;
+  --accent-foreground: #1d2021;
+  --destructive: #fb4934;
+  --border: #665c54;
+  --input: #504945;
+  --ring: #b8bb26;
+  --chart-1: #b8bb26;
+  --chart-2: #8ec07c;
+  --chart-3: #fabd2f;
+  --chart-4: #83a598;
+  --chart-5: #d3869b;
+  --radius: 0rem;
+  --sidebar: #282828;
+  --sidebar-foreground: #ebdbb2;
+  --sidebar-primary: #b8bb26;
+  --sidebar-primary-foreground: #1d2021;
+  --sidebar-accent: #504945;
+  --sidebar-accent-foreground: #ebdbb2;
+  --sidebar-border: #665c54;
+  --sidebar-ring: #b8bb26;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
+  }
+}
+```
+
+### 4. Update `components.json`
+
+Set the shadcn style and base color:
+
+```json
+{
+  "$schema": "https://ui.shadcn.com/schema.json",
+  "style": "base-nova",
+  "rsc": true,
+  "tsx": true,
+  "tailwind": {
+    "config": "",
+    "css": "app/globals.css",
+    "baseColor": "neutral",
+    "cssVariables": true,
+    "prefix": ""
+  },
+  "iconLibrary": "lucide",
+  "aliases": {
+    "components": "@/components",
+    "utils": "@/lib/utils",
+    "ui": "@/components/ui",
+    "lib": "@/lib",
+    "hooks": "@/hooks"
+  }
+}
+```
+
+---
+
+## Color Palette (Gruvbox Dark)
+
+| Token         | Hex       | Usage                        |
+|---------------|-----------|------------------------------|
+| `background`  | `#1d2021` | Page background              |
+| `foreground`  | `#ebdbb2` | Default text                 |
+| `card`        | `#282828` | Card/panel backgrounds       |
+| `primary`     | `#b8bb26` | Primary actions, links, ring |
+| `secondary`   | `#8ec07c` | Secondary actions            |
+| `accent`      | `#fabd2f` | Highlights, warnings         |
+| `muted`       | `#504945` | Disabled/subtle backgrounds  |
+| `muted-fg`    | `#a89984` | Placeholder/subtle text      |
+| `destructive` | `#fb4934` | Errors, delete actions       |
+| `border`      | `#665c54` | All borders                  |
+| `chart-1..5`  | (above)   | Data visualization           |
+
+---
+
+## Design Rules
+
+- **Font:** JetBrains Mono everywhere. Override `--font-sans` to point at the mono font so all shadcn components inherit it.
+- **Border radius:** `0rem` globally. Every component gets sharp corners.
+- **No shadows, gradients, or blur.** Keep it flat.
+- **Borders:** 1px solid, evoking ASCII box-drawing (`+-+|+-+`).
+- **Buttons:** Style to look like `[ Save ]` or `> Submit`.
+- **Inputs:** Terminal prompt feel with a blinking cursor.
+- **Hover states:** Underline or inverse colors (swap fg/bg).
+- **Errors:** Red text, prefix with `ERR:`.
+- **Success:** Green text.
+- **Loading:** Spinner like `[ ... ]` or braille dots.
+- **Breadcrumbs:** File paths (`~/cookbooks/owner/repo/`).
+- **No icon libraries** — prefer ASCII symbols (`[+]`, `[x]`, `>>`, `--`) or text labels.
+
+---
+
+## Compatibility
+
+- Next.js 15+ (App Router)
+- Tailwind CSS v4
+- shadcn/ui (base-nova style)
+- `tw-animate-css` for animations
+- `@tailwindcss/typography` for prose styling

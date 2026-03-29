@@ -6,15 +6,14 @@ A recipe management app that uses GitHub repositories as the storage backend. Ea
 
 ## Core Concepts
 
-| Domain Term | GitHub Equivalent |
-|-------------|-------------------|
-| Cookbook     | Repository        |
-| Recipe      | Markdown file     |
-| Section     | Folder/directory  |
-| Revision    | Commit            |
-| Draft       | Branch            |
-| Suggestion  | Pull Request      |
-| Fork        | Fork              |
+| UI Term      | GitHub Equivalent |
+|--------------|-------------------|
+| Cookbook      | Repository        |
+| Recipe       | Markdown file     |
+| Commit       | Commit            |
+| Branch       | Branch            |
+| Pull Request | Pull Request      |
+| Fork         | Fork              |
 
 ---
 
@@ -74,13 +73,7 @@ Recipes are `.md` files with YAML frontmatter followed by freeform markdown body
 title: "Grandma's Tomato Sauce"
 tags: [italian, sauce, family]
 servings: 6
-prep_time: 15
-cook_time: 45
-difficulty: easy
-image: ./images/tomato-sauce.jpg
 source: "Grandma Rose"
-created: 2025-03-15
-updated: 2025-06-01
 ---
 
 ## Ingredients
@@ -111,13 +104,7 @@ This freezes well for up to 3 months.
 | `title`      | string     | yes      | Display name of the recipe               |
 | `tags`       | string[]   | no       | Categorization tags                      |
 | `servings`   | number     | no       | Number of servings                       |
-| `prep_time`  | number     | no       | Prep time in minutes                     |
-| `cook_time`  | number     | no       | Cook time in minutes                     |
-| `difficulty` | enum       | no       | `easy`, `medium`, `hard`                 |
-| `image`      | string     | no       | Relative path to an image in the repo    |
 | `source`     | string     | no       | Attribution (person, URL, book)          |
-| `created`    | date       | no       | ISO date string                          |
-| `updated`    | date       | no       | ISO date string, set on each edit        |
 
 The body is freeform markdown. No enforced structure — users write however they want.
 
@@ -125,23 +112,16 @@ The body is freeform markdown. No enforced structure — users write however the
 
 All operations go through the GitHub Contents API (or Git Data API for batch ops).
 
-- **Browse:** List files/folders in the repo. Render markdown with parsed frontmatter for the UI.
+- **Browse:** List recipe files in the repo. Render markdown with parsed frontmatter for the UI.
 - **Create:** New `.md` file via the Contents API. App provides a form/editor that outputs frontmatter + markdown.
 - **Edit:** Update file contents. Each save is a commit. Commit message auto-generated (e.g., `Update "Grandma's Tomato Sauce"`) but can be customized.
 - **Delete:** Remove file via Contents API (creates a deletion commit).
-- **Move/Rename:** Delete + create (or use Git Data API for a tree-level rename within a single commit).
 
-### Sections (Folders)
-
-- Users can organize recipes into folders (e.g., `desserts/`, `weeknight-dinners/`).
-- Sections are plain directories in the repo.
-- Nested sections are supported.
-- UI provides breadcrumb navigation.
-- Creating a section creates the folder with a `.keep` or optional `_index.md` for section metadata (description, cover image).
+Recipes are organized by tags in the frontmatter, not by folders. The cookbook is a flat list of `.md` files.
 
 ### Images
 
-- Images are committed to the repo alongside recipes (e.g., in an `images/` folder or co-located).
+- Images are committed to the repo alongside recipes (e.g., in an `images/` directory or co-located).
 - Referenced via relative paths in frontmatter or inline markdown.
 - The app handles upload by committing the binary file to the repo.
 
@@ -156,7 +136,7 @@ These are first-class features, not hidden. The app surfaces git workflows in a 
 - View the full commit history of a recipe (file-level log).
 - View the full commit history of a cookbook (repo-level log).
 - Each history entry shows: date, author, message, diff summary.
-- "Blame" view: see who last edited each line/section of a recipe.
+- "Blame" view: see who last edited each line of a recipe.
 
 ### Drafts (Branches)
 
@@ -193,14 +173,11 @@ These are first-class features, not hidden. The app surfaces git workflows in a 
 /dashboard                  List of user's cookbooks
 
 /cookbook/new                Create a new cookbook
-/cookbook/[owner]/[repo]     Cookbook home — recipe listing (file tree)
+/cookbook/[owner]/[repo]     Cookbook home — flat recipe listing
 /cookbook/[owner]/[repo]/settings   Cookbook settings (rename, delete, visibility)
 
-/cookbook/[owner]/[repo]/tree/[branch]/[...path]
-                            Browse folders/files on a specific branch
-
-/cookbook/[owner]/[repo]/recipe/new?path=[folder]
-                            Create a new recipe (optional target folder)
+/cookbook/[owner]/[repo]/recipe/new
+                            Create a new recipe
 /cookbook/[owner]/[repo]/recipe/[...path]
                             View a recipe (rendered markdown)
 /cookbook/[owner]/[repo]/recipe/[...path]/edit
@@ -257,7 +234,7 @@ The app uses a retro Linux/terminal-inspired visual style. It should feel like a
 Shown on the dashboard. Displays name, description, recipe count, last updated, fork badge.
 
 ### Recipe Card
-Shown when browsing a cookbook. Displays title, tags, difficulty badge, prep+cook time, thumbnail image.
+Shown when browsing a cookbook. Displays title, tags, servings, source.
 
 ### Recipe Viewer
 Full rendered markdown with parsed frontmatter displayed as a structured header (title, metadata chips, image).
@@ -350,9 +327,9 @@ Dashboard → Cookbook → New Recipe → Fill Form → Save (commit) → View R
 ```
 
 1. User opens their dashboard, clicks into a cookbook.
-2. Clicks "New recipe" (or navigates into a section first, then clicks "New recipe").
+2. Clicks "New recipe".
 3. The recipe editor opens with:
-   - Frontmatter form fields (title, tags, servings, times, difficulty, source).
+   - Frontmatter form fields (title, tags, servings, source).
    - Markdown editor for the body (ingredients, instructions, notes — freeform).
 4. User fills it out and hits "Save."
 5. The app commits the `.md` file to the repo on the current branch (default: `main`). Auto-generated commit message: `Add "Garlic Butter Shrimp"`.
@@ -369,17 +346,6 @@ View Recipe → Edit → Modify → Save (commit) → View Updated Recipe
 3. User makes changes.
 4. Hits "Save." The app commits the updated file. Commit message: `Update "Garlic Butter Shrimp"`. The `updated` frontmatter field is set automatically.
 5. Returns to the recipe view with changes reflected.
-
-### Daily Use: Browsing & Organizing
-
-```
-Cookbook → Browse Sections → View Recipes → Create/Rename/Move Sections
-```
-
-1. The cookbook view shows the file tree — sections (folders) and recipes (files).
-2. User can click into sections to browse, use breadcrumbs to navigate back up.
-3. User can create new sections, move recipes between sections, rename sections.
-4. Each structural change is a commit.
 
 ### Collaboration: Forking & Suggesting
 
@@ -429,7 +395,7 @@ User opens ChatGPT/Claude → MCP server connected → "Add my pasta recipe to m
 3. User talks to the AI naturally: "Add a recipe for spaghetti carbonara to my family-recipes cookbook."
 4. The AI calls `list_cookbooks` to find the cookbook, then `create_recipe` with structured frontmatter + body.
 5. The recipe is committed to the repo. User can see it in the Git Recipe web UI.
-6. Multi-step operations work the same way: "Organize all my pasta recipes into a section" → the AI lists recipes, creates a folder, moves files — all through MCP tool calls.
+6. Multi-step operations work the same way: "Tag all my pasta recipes as italian" → the AI lists recipes, reads each, updates tags — all through MCP tool calls.
 
 ---
 
@@ -463,7 +429,7 @@ The **primary integration** is a published ChatGPT App via the OpenAI Apps SDK, 
 │                                                                  │
 │  Transport: Streamable HTTP (ChatGPT) / stdio (local clients)   │
 │  Auth: OAuth 2.0 w/ PKCE (ChatGPT) / env token (local)          │
-│  Tools: recipe CRUD, sections, branches, PRs, import             │
+│  Tools: recipe CRUD, branches, PRs, import                       │
 │  Resources: cookbook listings, recipe content                     │
 │  Prompts: add-recipe, organize, import, search                   │
 └──────────────────────────┬───────────────────────────────────────┘
@@ -551,20 +517,12 @@ Each tool declares MCP annotations for safety hints. All tool input schemas use 
 
 | Tool               | Annotations | Description |
 |--------------------|-------------|-------------|
-| `list_recipes`     | `readOnlyHint: true` | List recipes in a cookbook or section. Returns titles, paths, frontmatter summaries. Params: `owner`, `repo`, `path?`, `branch?`. |
+| `list_recipes`     | `readOnlyHint: true` | List recipes in a cookbook. Returns titles, paths, frontmatter summaries. Params: `owner`, `repo`, `branch?`. |
 | `read_recipe`      | `readOnlyHint: true` | Read full recipe (frontmatter + markdown body). Params: `owner`, `repo`, `path`, `branch?`. |
-| `create_recipe`    | `destructiveHint: false` | Create a new recipe. Params: `owner`, `repo`, `path`, `title`, `tags?`, `servings?`, `prep_time?`, `cook_time?`, `difficulty?`, `source?`, `body`, `branch?`. Commits to the repo. |
-| `update_recipe`    | `destructiveHint: false` | Update an existing recipe (partial frontmatter + body). Params: `owner`, `repo`, `path`, `title?`, `tags?`, `servings?`, `prep_time?`, `cook_time?`, `difficulty?`, `source?`, `body?`, `branch?`, `message?`. |
+| `create_recipe`    | `destructiveHint: false` | Create a new recipe. Params: `owner`, `repo`, `path`, `title`, `tags?`, `servings?`, `source?`, `body`, `branch?`. Commits to the repo. |
+| `update_recipe`    | `destructiveHint: false` | Update an existing recipe (partial frontmatter + body). Params: `owner`, `repo`, `path`, `title?`, `tags?`, `servings?`, `source?`, `body?`, `branch?`, `message?`. |
 | `delete_recipe`    | `destructiveHint: true` | Delete a recipe. Params: `owner`, `repo`, `path`, `branch?`. |
-| `move_recipe`      | `destructiveHint: false` | Move/rename a recipe. Params: `owner`, `repo`, `old_path`, `new_path`, `branch?`. |
 | `search_recipes`   | `readOnlyHint: true` | Search recipe titles, tags, and content. Params: `owner`, `repo`, `query`, `branch?`. |
-
-#### Sections
-
-| Tool               | Annotations | Description |
-|--------------------|-------------|-------------|
-| `list_sections`    | `readOnlyHint: true` | List all sections (folders). Params: `owner`, `repo`, `branch?`. |
-| `create_section`   | `destructiveHint: false` | Create a section. Params: `owner`, `repo`, `path`, `branch?`. |
 
 #### Git Operations
 
@@ -603,7 +561,6 @@ Prompt templates that AI clients can surface to users as quick actions:
 | Prompt               | Description                                                    |
 |----------------------|----------------------------------------------------------------|
 | `add-recipe`         | "Tell me about a recipe and I'll add it to your cookbook."     |
-| `organize-cookbook`   | "I'll review your cookbook and suggest how to organize it."    |
 | `import-recipe`      | "Give me a URL and I'll import the recipe."                    |
 | `weekly-meal-plan`   | "I'll look at your recipes and suggest a meal plan."           |
 | `find-recipe`        | "Describe what you're in the mood for and I'll search."        |
@@ -650,12 +607,6 @@ These happen entirely in the user's AI client, not in the Git Recipe web app.
 >
 > **ChatGPT:** *(calls `list_cookbooks` → finds "family-recipes" → calls `create_recipe` with structured frontmatter + body)*
 > Done — I've committed "Garlic Butter Shrimp" to your family-recipes cookbook at `garlic-butter-shrimp.md`.
-
-**Organizing (Claude):**
-> **User:** Can you organize my Italian cookbook? Group things by course.
->
-> **Claude:** *(calls `list_recipes` → analyzes tags/titles → calls `create_section` for appetizers/, mains/, desserts/ → calls `move_recipe` for each)*
-> I've reorganized your cookbook into 3 sections and moved 12 recipes.
 
 **Batch import (any client):**
 > **User:** Import these recipes: [url1] [url2] [url3]
