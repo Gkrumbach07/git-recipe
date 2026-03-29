@@ -99,12 +99,14 @@ export async function GET(request: NextRequest) {
 <body style="background:#1d2021;color:#ebdbb2;font-family:monospace;display:flex;justify-content:center;align-items:center;height:100vh;margin:0">
 <div style="max-width:360px;width:100%">
 <h1 style="color:#b8bb26;margin:0 0 1.5rem;font-size:1.2rem">[ git-recipe ]</h1>
-<a href="${githubUrl}" style="display:block;text-align:center;border:1px solid #b8bb26;color:#b8bb26;padding:0.75rem;text-decoration:none;margin-bottom:1.5rem">[ Sign in with GitHub ]</a>
-<div style="text-align:center;color:#665c54;margin-bottom:1.5rem">-- or use test credentials --</div>
-<form method="POST" action="${formAction}" style="border:1px solid #665c54;padding:1.5rem">
-<label style="display:block;margin-bottom:0.5rem">&gt; username<br><input name="username" style="background:#282828;color:#ebdbb2;border:1px solid #665c54;padding:0.5rem;width:100%;font-family:monospace;box-sizing:border-box;margin-top:0.25rem" /></label>
-<label style="display:block;margin-bottom:1rem">&gt; password<br><input name="password" type="password" style="background:#282828;color:#ebdbb2;border:1px solid #665c54;padding:0.5rem;width:100%;font-family:monospace;box-sizing:border-box;margin-top:0.25rem" /></label>
-<button type="submit" style="background:transparent;color:#b8bb26;border:1px solid #b8bb26;padding:0.5rem 1rem;font-family:monospace;cursor:pointer;width:100%">[ login ]</button>
+<a href="${githubUrl}" style="display:block;text-align:center;border:1px solid #b8bb26;color:#b8bb26;padding:0.75rem;text-decoration:none;margin-bottom:2rem">[ Sign in with GitHub ]</a>
+<div id="test-toggle" style="text-align:center;margin-top:1rem">
+<button onclick="document.getElementById('test-form').style.display='block';this.style.display='none'" style="background:none;border:none;color:#504945;font-family:monospace;cursor:pointer;font-size:0.75rem">use test account</button>
+</div>
+<form id="test-form" method="POST" action="${formAction}" style="display:none;border:1px solid #665c54;padding:1.5rem;margin-top:1rem">
+<label style="display:block;margin-bottom:0.5rem;font-size:0.85rem">&gt; username<br><input name="username" style="background:#282828;color:#ebdbb2;border:1px solid #665c54;padding:0.5rem;width:100%;font-family:monospace;box-sizing:border-box;margin-top:0.25rem;font-size:0.85rem" /></label>
+<label style="display:block;margin-bottom:1rem;font-size:0.85rem">&gt; password<br><input name="password" type="password" style="background:#282828;color:#ebdbb2;border:1px solid #665c54;padding:0.5rem;width:100%;font-family:monospace;box-sizing:border-box;margin-top:0.25rem;font-size:0.85rem" /></label>
+<button type="submit" style="background:transparent;color:#b8bb26;border:1px solid #b8bb26;padding:0.5rem 1rem;font-family:monospace;cursor:pointer;width:100%;font-size:0.85rem">[ login ]</button>
 </form>
 </div></body></html>`,
       { status: 200, headers: { 'Content-Type': 'text/html' } },
