@@ -20,6 +20,7 @@ export async function GET(request: NextRequest) {
   const state = url.searchParams.get('state')
   const codeChallenge = url.searchParams.get('code_challenge')
   const codeChallengeMethod = url.searchParams.get('code_challenge_method')
+  const isTestMode = url.searchParams.get('test') === '1' && !!process.env.MCP_TEST_GITHUB_TOKEN
 
   // Validate required parameters
   if (!clientId || !redirectUri || !state || !codeChallenge) {
@@ -44,8 +45,7 @@ export async function GET(request: NextRequest) {
   }
 
   // Skip client_id validation in test mode
-  if (!process.env.MCP_TEST_GITHUB_TOKEN) {
-    // Verify client_id JWT and check redirect_uri
+  if (!isTestMode) {
     try {
       const client = await verifyClientId(clientId)
       if (!client.redirectUris.includes(redirectUri)) {
@@ -79,8 +79,8 @@ export async function GET(request: NextRequest) {
     maxAge: 60 * 10,
   })
 
-  // If test mode is enabled, show a login form instead of redirecting to GitHub
-  if (process.env.MCP_TEST_GITHUB_TOKEN) {
+  // Test mode: show username/password form instead of GitHub OAuth
+  if (isTestMode) {
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
     const formAction = `${baseUrl}/api/oauth/test-login`
     return new Response(
@@ -97,7 +97,7 @@ export async function GET(request: NextRequest) {
     )
   }
 
-  // Generate GitHub OAuth state and store it
+  // Default: redirect to GitHub OAuth
   const githubState = generateState()
   cookieStore.set('mcp_github_state', githubState, {
     httpOnly: true,
@@ -107,7 +107,6 @@ export async function GET(request: NextRequest) {
     maxAge: 60 * 10,
   })
 
-  // Redirect to GitHub OAuth
   const github = getMcpGitHub()
   const githubUrl = github.createAuthorizationURL(githubState, ['user'])
   return NextResponse.redirect(githubUrl)
