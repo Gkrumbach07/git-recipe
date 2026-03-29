@@ -20,7 +20,6 @@ export async function GET(request: NextRequest) {
   const state = url.searchParams.get('state')
   const codeChallenge = url.searchParams.get('code_challenge')
   const codeChallengeMethod = url.searchParams.get('code_challenge_method')
-  const isTestMode = url.searchParams.get('test') === '1' && !!process.env.MCP_TEST_GITHUB_TOKEN
 
   // Validate required parameters
   if (!clientId || !redirectUri || !state || !codeChallenge) {
@@ -44,17 +43,21 @@ export async function GET(request: NextRequest) {
     )
   }
 
-  // Skip client_id validation in test mode
-  if (!isTestMode) {
-    try {
-      const client = await verifyClientId(clientId)
-      if (!client.redirectUris.includes(redirectUri)) {
-        return Response.json(
-          { error: 'invalid_request', error_description: 'redirect_uri does not match registered URIs' },
-          { status: 400 },
-        )
-      }
-    } catch {
+  // Try to verify client_id — if it fails and test mode is available, use test login
+  let useTestMode = false
+  try {
+    const client = await verifyClientId(clientId)
+    if (!client.redirectUris.includes(redirectUri)) {
+      return Response.json(
+        { error: 'invalid_request', error_description: 'redirect_uri does not match registered URIs' },
+        { status: 400 },
+      )
+    }
+  } catch {
+    if (process.env.MCP_TEST_GITHUB_TOKEN) {
+      // Unknown client but test mode available — use test login
+      useTestMode = true
+    } else {
       return Response.json(
         { error: 'invalid_client', error_description: 'Invalid client_id' },
         { status: 400 },
@@ -79,8 +82,8 @@ export async function GET(request: NextRequest) {
     maxAge: 60 * 10,
   })
 
-  // Test mode: show username/password form instead of GitHub OAuth
-  if (isTestMode) {
+  // Test mode: show username/password form
+  if (useTestMode) {
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
     const formAction = `${baseUrl}/api/oauth/test-login`
     return new Response(
