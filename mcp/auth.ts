@@ -1,11 +1,21 @@
 /**
  * Token resolution for the MCP server.
+ * - HTTP with OAuth: GitHub token from authInfo.extra.githubToken
  * - Local clients (stdio): GITHUB_TOKEN env var
- * - ChatGPT (HTTP): OAuth token from request context
  */
 
-export function getToken(oauthToken?: string): string {
-  if (oauthToken) return oauthToken
+export interface McpAuthInfo {
+  extra?: {
+    githubToken?: string
+    [key: string]: unknown
+  }
+  [key: string]: unknown
+}
+
+export function getToken(authInfo?: McpAuthInfo): string {
+  if (authInfo?.extra?.githubToken) {
+    return authInfo.extra.githubToken
+  }
 
   const token = process.env.GITHUB_TOKEN
   if (!token) {

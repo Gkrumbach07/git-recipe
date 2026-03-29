@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import * as github from '../github'
-import { getToken } from '../auth'
+import { getToken, type McpAuthInfo } from '../auth'
 import matter from 'gray-matter'
 
 function slugify(title: string): string {
@@ -32,8 +32,8 @@ export function registerImportTools(server: McpServer) {
       'openai/toolInvocation/invoking': 'Importing recipe from URL...',
       'openai/toolInvocation/invoked': 'Recipe imported!',
     },
-  }, async ({ owner, repo, url, path, branch }) => {
-    const token = getToken()
+  }, async ({ owner, repo, url, path, branch }, extra) => {
+    const token = getToken(extra.authInfo as McpAuthInfo | undefined)
 
     // Fetch the URL content
     const res = await fetch(url)

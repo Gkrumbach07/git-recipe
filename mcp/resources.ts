@@ -1,7 +1,7 @@
 import { ResourceTemplate } from '@modelcontextprotocol/sdk/server/mcp.js'
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import * as github from './github'
-import { getToken } from './auth'
+import { getToken, type McpAuthInfo } from './auth'
 import matter from 'gray-matter'
 
 export function registerResources(server: McpServer) {
@@ -13,8 +13,8 @@ export function registerResources(server: McpServer) {
       description: 'List of all user\'s cookbooks',
       mimeType: 'application/json',
     },
-    async () => {
-      const token = getToken()
+    async (_uri, extra) => {
+      const token = getToken((extra as { authInfo?: McpAuthInfo }).authInfo)
       const repos = await github.listRepos(token)
       const cookbooks = []
       for (const repo of repos) {
@@ -49,8 +49,8 @@ export function registerResources(server: McpServer) {
       description: 'Cookbook metadata and full recipe listing',
       mimeType: 'application/json',
     },
-    async (_uri, variables) => {
-      const token = getToken()
+    async (_uri, variables, extra) => {
+      const token = getToken((extra as { authInfo?: McpAuthInfo }).authInfo)
       const owner = variables.owner as string
       const repo = variables.repo as string
       const repoData = await github.getRepo(token, owner, repo)
@@ -83,8 +83,8 @@ export function registerResources(server: McpServer) {
       description: 'A single recipe\'s full content',
       mimeType: 'application/json',
     },
-    async (_uri, variables) => {
-      const token = getToken()
+    async (_uri, variables, extra) => {
+      const token = getToken((extra as { authInfo?: McpAuthInfo }).authInfo)
       const owner = variables.owner as string
       const repo = variables.repo as string
       const path = variables.path as string

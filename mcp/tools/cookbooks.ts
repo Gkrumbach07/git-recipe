@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import * as github from '../github'
-import { getToken } from '../auth'
+import { getToken, type McpAuthInfo } from '../auth'
 
 export function registerCookbookTools(server: McpServer) {
   server.registerTool('list_cookbooks', {
@@ -16,8 +16,8 @@ export function registerCookbookTools(server: McpServer) {
       'openai/toolInvocation/invoking': 'Listing your cookbooks...',
       'openai/toolInvocation/invoked': 'Found your cookbooks!',
     },
-  }, async () => {
-    const token = getToken()
+  }, async (extra) => {
+    const token = getToken(extra.authInfo as McpAuthInfo | undefined)
     const repos = await github.listRepos(token)
     const cookbooks = []
     for (const repo of repos) {
@@ -56,8 +56,8 @@ export function registerCookbookTools(server: McpServer) {
       'openai/toolInvocation/invoking': 'Creating your cookbook...',
       'openai/toolInvocation/invoked': 'Cookbook created!',
     },
-  }, async ({ name, description, visibility }) => {
-    const token = getToken()
+  }, async ({ name, description, visibility }, extra) => {
+    const token = getToken(extra.authInfo as McpAuthInfo | undefined)
     const repo = await github.createRepo(token, {
       name,
       description,
@@ -98,8 +98,8 @@ export function registerCookbookTools(server: McpServer) {
       'openai/toolInvocation/invoking': 'Deleting cookbook...',
       'openai/toolInvocation/invoked': 'Cookbook deleted.',
     },
-  }, async ({ owner, repo }) => {
-    const token = getToken()
+  }, async ({ owner, repo }, extra) => {
+    const token = getToken(extra.authInfo as McpAuthInfo | undefined)
     await github.deleteRepo(token, owner, repo)
     return {
       content: [{ type: 'text' as const, text: `Deleted cookbook ${owner}/${repo}` }],

@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import * as github from '../github'
-import { getToken } from '../auth'
+import { getToken, type McpAuthInfo } from '../auth'
 
 export function registerHistoryTools(server: McpServer) {
   server.registerTool('get_history', {
@@ -18,8 +18,8 @@ export function registerHistoryTools(server: McpServer) {
       destructiveHint: false,
       openWorldHint: false,
     },
-  }, async ({ owner, repo, path, branch }) => {
-    const token = getToken()
+  }, async ({ owner, repo, path, branch }, extra) => {
+    const token = getToken(extra.authInfo as McpAuthInfo | undefined)
     const commits = await github.listCommits(token, owner, repo, path, branch)
     const result = commits.map((c) => ({
       sha: c.sha.substring(0, 7),

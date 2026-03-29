@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import * as github from '../github'
-import { getToken } from '../auth'
+import { getToken, type McpAuthInfo } from '../auth'
 import matter from 'gray-matter'
 
 function parseRecipeContent(base64: string) {
@@ -41,8 +41,8 @@ export function registerRecipeTools(server: McpServer) {
       'openai/toolInvocation/invoking': 'Listing recipes...',
       'openai/toolInvocation/invoked': 'Found recipes!',
     },
-  }, async ({ owner, repo, path, branch }) => {
-    const token = getToken()
+  }, async ({ owner, repo, path, branch }, extra) => {
+    const token = getToken(extra.authInfo as McpAuthInfo | undefined)
     const contents = await github.listContents(token, owner, repo, path ?? '', branch)
     const recipes = contents
       .filter((item) => item.type === 'file' && item.name.endsWith('.md') && item.name !== 'README.md')
@@ -77,8 +77,8 @@ export function registerRecipeTools(server: McpServer) {
       'openai/toolInvocation/invoking': 'Reading recipe...',
       'openai/toolInvocation/invoked': 'Recipe loaded!',
     },
-  }, async ({ owner, repo, path, branch }) => {
-    const token = getToken()
+  }, async ({ owner, repo, path, branch }, extra) => {
+    const token = getToken(extra.authInfo as McpAuthInfo | undefined)
     const file = await github.getFile(token, owner, repo, path, branch)
     const { frontmatter, body } = parseRecipeContent(file.content!)
     return {
@@ -112,8 +112,8 @@ export function registerRecipeTools(server: McpServer) {
       'openai/toolInvocation/invoking': 'Adding recipe to your cookbook...',
       'openai/toolInvocation/invoked': 'Recipe added!',
     },
-  }, async ({ owner, repo, path, title, tags, servings, source, body, branch }) => {
-    const token = getToken()
+  }, async ({ owner, repo, path, title, tags, servings, source, body, branch }, extra) => {
+    const token = getToken(extra.authInfo as McpAuthInfo | undefined)
     const filePath = path ?? slugify(title)
     const frontmatter: Record<string, unknown> = {
       title,
@@ -159,8 +159,8 @@ export function registerRecipeTools(server: McpServer) {
       'openai/toolInvocation/invoking': 'Updating recipe...',
       'openai/toolInvocation/invoked': 'Recipe updated!',
     },
-  }, async ({ owner, repo, path, title, tags, servings, source, body, branch, message }) => {
-    const token = getToken()
+  }, async ({ owner, repo, path, title, tags, servings, source, body, branch, message }, extra) => {
+    const token = getToken(extra.authInfo as McpAuthInfo | undefined)
     const file = await github.getFile(token, owner, repo, path, branch)
     const existing = parseRecipeContent(file.content!)
 
@@ -204,8 +204,8 @@ export function registerRecipeTools(server: McpServer) {
       'openai/toolInvocation/invoking': 'Deleting recipe...',
       'openai/toolInvocation/invoked': 'Recipe deleted.',
     },
-  }, async ({ owner, repo, path, branch }) => {
-    const token = getToken()
+  }, async ({ owner, repo, path, branch }, extra) => {
+    const token = getToken(extra.authInfo as McpAuthInfo | undefined)
     const file = await github.getFile(token, owner, repo, path, branch)
     const { frontmatter } = parseRecipeContent(file.content!)
     await github.deleteFile(
@@ -235,8 +235,8 @@ export function registerRecipeTools(server: McpServer) {
       'openai/toolInvocation/invoking': 'Searching recipes...',
       'openai/toolInvocation/invoked': 'Search complete!',
     },
-  }, async ({ owner, repo, query, branch }) => {
-    const token = getToken()
+  }, async ({ owner, repo, query, branch }, extra) => {
+    const token = getToken(extra.authInfo as McpAuthInfo | undefined)
     const q = query.toLowerCase()
 
     const contents = await github.listContents(token, owner, repo, '', branch)
