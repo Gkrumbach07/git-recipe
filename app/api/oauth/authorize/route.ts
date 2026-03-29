@@ -76,6 +76,24 @@ export async function GET(request: NextRequest) {
     maxAge: 60 * 10,
   })
 
+  // If test mode is enabled, show a login form instead of redirecting to GitHub
+  if (process.env.MCP_TEST_GITHUB_TOKEN) {
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+    const formAction = `${baseUrl}/api/oauth/test-login`
+    return new Response(
+      `<!DOCTYPE html>
+<html><head><title>git-recipe — sign in</title></head>
+<body style="background:#1d2021;color:#ebdbb2;font-family:monospace;display:flex;justify-content:center;align-items:center;height:100vh;margin:0">
+<form method="POST" action="${formAction}" style="border:1px solid #665c54;padding:2rem;max-width:320px;width:100%">
+<h2 style="color:#b8bb26;margin:0 0 1rem">[ sign in ]</h2>
+<label style="display:block;margin-bottom:0.5rem">&gt; username<br><input name="username" style="background:#282828;color:#ebdbb2;border:1px solid #665c54;padding:0.5rem;width:100%;font-family:monospace;box-sizing:border-box" /></label>
+<label style="display:block;margin-bottom:1rem">&gt; password<br><input name="password" type="password" style="background:#282828;color:#ebdbb2;border:1px solid #665c54;padding:0.5rem;width:100%;font-family:monospace;box-sizing:border-box" /></label>
+<button type="submit" style="background:transparent;color:#b8bb26;border:1px solid #b8bb26;padding:0.5rem 1rem;font-family:monospace;cursor:pointer">[ login ]</button>
+</form></body></html>`,
+      { status: 200, headers: { 'Content-Type': 'text/html' } },
+    )
+  }
+
   // Generate GitHub OAuth state and store it
   const githubState = generateState()
   cookieStore.set('mcp_github_state', githubState, {
