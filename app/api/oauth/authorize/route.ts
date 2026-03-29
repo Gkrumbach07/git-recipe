@@ -43,8 +43,7 @@ export async function GET(request: NextRequest) {
     )
   }
 
-  // Try to verify client_id — if it fails and test mode is available, use test login
-  let useTestMode = false
+  // Verify client_id
   try {
     const client = await verifyClientId(clientId)
     if (!client.redirectUris.includes(redirectUri)) {
@@ -54,15 +53,10 @@ export async function GET(request: NextRequest) {
       )
     }
   } catch {
-    if (process.env.MCP_TEST_GITHUB_TOKEN) {
-      // Unknown client but test mode available — use test login
-      useTestMode = true
-    } else {
-      return Response.json(
-        { error: 'invalid_client', error_description: 'Invalid client_id' },
-        { status: 400 },
-      )
-    }
+    return Response.json(
+      { error: 'invalid_client', error_description: 'Invalid client_id' },
+      { status: 400 },
+    )
   }
 
   // Store MCP OAuth params in an encrypted cookie
@@ -82,25 +76,7 @@ export async function GET(request: NextRequest) {
     maxAge: 60 * 10,
   })
 
-  // Test mode: show username/password form
-  if (useTestMode) {
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
-    const formAction = `${baseUrl}/api/oauth/test-login`
-    return new Response(
-      `<!DOCTYPE html>
-<html><head><title>git-recipe — sign in</title></head>
-<body style="background:#1d2021;color:#ebdbb2;font-family:monospace;display:flex;justify-content:center;align-items:center;height:100vh;margin:0">
-<form method="POST" action="${formAction}" style="border:1px solid #665c54;padding:2rem;max-width:320px;width:100%">
-<h2 style="color:#b8bb26;margin:0 0 1rem">[ sign in ]</h2>
-<label style="display:block;margin-bottom:0.5rem">&gt; username<br><input name="username" style="background:#282828;color:#ebdbb2;border:1px solid #665c54;padding:0.5rem;width:100%;font-family:monospace;box-sizing:border-box" /></label>
-<label style="display:block;margin-bottom:1rem">&gt; password<br><input name="password" type="password" style="background:#282828;color:#ebdbb2;border:1px solid #665c54;padding:0.5rem;width:100%;font-family:monospace;box-sizing:border-box" /></label>
-<button type="submit" style="background:transparent;color:#b8bb26;border:1px solid #b8bb26;padding:0.5rem 1rem;font-family:monospace;cursor:pointer">[ login ]</button>
-</form></body></html>`,
-      { status: 200, headers: { 'Content-Type': 'text/html' } },
-    )
-  }
-
-  // Default: redirect to GitHub OAuth
+  // Build the GitHub OAuth URL
   const githubState = generateState()
   cookieStore.set('mcp_github_state', githubState, {
     httpOnly: true,
@@ -112,5 +88,29 @@ export async function GET(request: NextRequest) {
 
   const github = getMcpGitHub()
   const githubUrl = github.createAuthorizationURL(githubState, ['user'])
+
+  // If test mode is enabled, show a page with both options
+  if (process.env.MCP_TEST_GITHUB_TOKEN) {
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+    const formAction = `${baseUrl}/api/oauth/test-login`
+    return new Response(
+      `<!DOCTYPE html>
+<html><head><title>git-recipe — sign in</title></head>
+<body style="background:#1d2021;color:#ebdbb2;font-family:monospace;display:flex;justify-content:center;align-items:center;height:100vh;margin:0">
+<div style="max-width:360px;width:100%">
+<h1 style="color:#b8bb26;margin:0 0 1.5rem;font-size:1.2rem">[ git-recipe ]</h1>
+<a href="${githubUrl}" style="display:block;text-align:center;border:1px solid #b8bb26;color:#b8bb26;padding:0.75rem;text-decoration:none;margin-bottom:1.5rem">[ Sign in with GitHub ]</a>
+<div style="text-align:center;color:#665c54;margin-bottom:1.5rem">-- or use test credentials --</div>
+<form method="POST" action="${formAction}" style="border:1px solid #665c54;padding:1.5rem">
+<label style="display:block;margin-bottom:0.5rem">&gt; username<br><input name="username" style="background:#282828;color:#ebdbb2;border:1px solid #665c54;padding:0.5rem;width:100%;font-family:monospace;box-sizing:border-box;margin-top:0.25rem" /></label>
+<label style="display:block;margin-bottom:1rem">&gt; password<br><input name="password" type="password" style="background:#282828;color:#ebdbb2;border:1px solid #665c54;padding:0.5rem;width:100%;font-family:monospace;box-sizing:border-box;margin-top:0.25rem" /></label>
+<button type="submit" style="background:transparent;color:#b8bb26;border:1px solid #b8bb26;padding:0.5rem 1rem;font-family:monospace;cursor:pointer;width:100%">[ login ]</button>
+</form>
+</div></body></html>`,
+      { status: 200, headers: { 'Content-Type': 'text/html' } },
+    )
+  }
+
+  // Default: redirect straight to GitHub OAuth
   return NextResponse.redirect(githubUrl)
 }
