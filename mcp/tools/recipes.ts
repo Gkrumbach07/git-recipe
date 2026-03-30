@@ -26,17 +26,16 @@ export function registerRecipeTools(server: McpServer) {
   }, async ({ owner, repo, path, branch }, extra) => {
     const token = getToken(extra.authInfo as McpAuthInfo | undefined)
     const contents = await github.listContents(token, owner, repo, path ?? '', branch)
+    const folders = contents
+      .filter((item) => item.type === 'dir' && !item.name.startsWith('.'))
+      .map((item) => ({ name: item.name, path: item.path }))
     const recipes = contents
-      .filter((item) => item.type === 'file' && item.name.endsWith('.md') && item.name !== 'README.md')
-      .map((item) => ({
-        name: item.name,
-        path: item.path,
-        size: item.size,
-      }))
+      .filter((item) => item.type === 'file' && item.name.endsWith('.md') && !item.name.startsWith('.') && item.name !== 'README.md')
+      .map((item) => ({ name: item.name, path: item.path, size: item.size }))
     return {
       content: [{
         type: 'text' as const,
-        text: JSON.stringify({ recipes }, null, 2),
+        text: JSON.stringify({ folders, recipes }, null, 2),
       }],
     }
   })
