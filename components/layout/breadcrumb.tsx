@@ -27,9 +27,10 @@ export function Breadcrumb({ owner, repo, path }: BreadcrumbProps) {
       {segments.map((segment, i) => {
         const isLast = i === segments.length - 1
         const segmentPath = segments.slice(0, i + 1).join('/')
-        const href = segment.endsWith('.md')
+        const isFile = segment.endsWith('.md')
+        const href = isFile
           ? `${basePath}/recipe/${segmentPath}`
-          : basePath
+          : `${basePath}/${segmentPath}`
 
         return (
           <span key={i}>

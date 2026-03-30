@@ -2,25 +2,7 @@ import { z } from 'zod'
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import * as github from '../github'
 import { getToken, type McpAuthInfo } from '../auth'
-import matter from 'gray-matter'
-
-function parseRecipeContent(base64: string) {
-  const decoded = Buffer.from(base64, 'base64').toString('utf-8')
-  const { data, content } = matter(decoded)
-  return { frontmatter: data, body: content.trim() }
-}
-
-function serializeRecipe(frontmatter: Record<string, unknown>, body: string): string {
-  return matter.stringify(body, frontmatter)
-}
-
-function slugify(title: string): string {
-  return title
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .concat('.md')
-}
+import { parseRecipe, serializeRecipe, slugify } from '../../lib/recipe'
 
 export function registerRecipeTools(server: McpServer) {
   server.registerTool('list_recipes', {
@@ -80,7 +62,7 @@ export function registerRecipeTools(server: McpServer) {
   }, async ({ owner, repo, path, branch }, extra) => {
     const token = getToken(extra.authInfo as McpAuthInfo | undefined)
     const file = await github.getFile(token, owner, repo, path, branch)
-    const { frontmatter, body } = parseRecipeContent(file.content!)
+    const { frontmatter, body } = parseRecipe(file.content!, file.sha)
     return {
       content: [{
         type: 'text' as const,
@@ -162,7 +144,7 @@ export function registerRecipeTools(server: McpServer) {
   }, async ({ owner, repo, path, title, tags, servings, source, body, branch, message }, extra) => {
     const token = getToken(extra.authInfo as McpAuthInfo | undefined)
     const file = await github.getFile(token, owner, repo, path, branch)
-    const existing = parseRecipeContent(file.content!)
+    const existing = parseRecipe(file.content!, file.sha)
 
     const frontmatter = { ...existing.frontmatter }
     if (title !== undefined) frontmatter.title = title
@@ -207,13 +189,144 @@ export function registerRecipeTools(server: McpServer) {
   }, async ({ owner, repo, path, branch }, extra) => {
     const token = getToken(extra.authInfo as McpAuthInfo | undefined)
     const file = await github.getFile(token, owner, repo, path, branch)
-    const { frontmatter } = parseRecipeContent(file.content!)
+    const { frontmatter } = parseRecipe(file.content!, file.sha)
     await github.deleteFile(
       token, owner, repo, path, file.sha,
       `Delete "${frontmatter.title ?? path}"`, branch,
     )
     return {
       content: [{ type: 'text' as const, text: `Deleted recipe at ${path}` }],
+    }
+  })
+
+  server.registerTool('duplicate_recipe', {
+    title: 'Duplicate Recipe',
+    description: 'Duplicate an existing recipe with a new filename and "(copy)" appended to the title.',
+    inputSchema: {
+      owner: z.string().describe('Repository owner'),
+      repo: z.string().describe('Repository name'),
+      path: z.string().describe('File path of the recipe to duplicate'),
+      branch: z.string().optional().describe('Branch name'),
+    },
+    annotations: {
+      readOnlyHint: false,
+      destructiveHint: false,
+      openWorldHint: false,
+    },
+  }, async ({ owner, repo, path, branch }, extra) => {
+    const token = getToken(extra.authInfo as McpAuthInfo | undefined)
+    const file = await github.getFile(token, owner, repo, path, branch)
+    const { frontmatter, body } = parseRecipe(file.content!, file.sha)
+    const newFrontmatter = { ...frontmatter, title: `${frontmatter.title} (copy)` }
+    const newPath = path.replace(/\.md$/, '-copy.md')
+    const content = serializeRecipe(newFrontmatter, body)
+    await github.createOrUpdateFile(
+      token, owner, repo, newPath, content, undefined,
+      `Duplicate "${frontmatter.title}"`, branch,
+    )
+    return {
+      content: [{ type: 'text' as const, text: `Duplicated "${frontmatter.title}" to ${newPath}` }],
+    }
+  })
+
+  server.registerTool('move_recipe', {
+    title: 'Move Recipe',
+    description: 'Move a recipe to a different folder or the root.',
+    inputSchema: {
+      owner: z.string().describe('Repository owner'),
+      repo: z.string().describe('Repository name'),
+      old_path: z.string().describe('Current file path'),
+      new_path: z.string().describe('New file path'),
+      branch: z.string().optional().describe('Branch name'),
+    },
+    annotations: {
+      readOnlyHint: false,
+      destructiveHint: false,
+      openWorldHint: false,
+    },
+  }, async ({ owner, repo, old_path, new_path, branch }, extra) => {
+    const token = getToken(extra.authInfo as McpAuthInfo | undefined)
+    const file = await github.getFile(token, owner, repo, old_path, branch)
+    const content = Buffer.from(file.content!, 'base64').toString('utf-8')
+    await github.createOrUpdateFile(
+      token, owner, repo, new_path, content, undefined,
+      `Move ${old_path} to ${new_path}`, branch,
+    )
+    await github.deleteFile(
+      token, owner, repo, old_path, file.sha,
+      `Move ${old_path} to ${new_path}`, branch,
+    )
+    return {
+      content: [{ type: 'text' as const, text: `Moved ${old_path} to ${new_path}` }],
+    }
+  })
+
+  server.registerTool('create_folder', {
+    title: 'Create Folder',
+    description: 'Create a folder in a cookbook to organize recipes.',
+    inputSchema: {
+      owner: z.string().describe('Repository owner'),
+      repo: z.string().describe('Repository name'),
+      name: z.string().describe('Folder name'),
+      parent_path: z.string().optional().describe('Parent folder path (empty for root)'),
+      branch: z.string().optional().describe('Branch name'),
+    },
+    annotations: {
+      readOnlyHint: false,
+      destructiveHint: false,
+      openWorldHint: false,
+    },
+  }, async ({ owner, repo, name, parent_path, branch }, extra) => {
+    const token = getToken(extra.authInfo as McpAuthInfo | undefined)
+    const folderPath = parent_path ? `${parent_path}/${name}` : name
+    await github.createOrUpdateFile(
+      token, owner, repo, `${folderPath}/.gitkeep`, '', undefined,
+      `Create folder "${name}"`, branch,
+    )
+    return {
+      content: [{ type: 'text' as const, text: `Created folder "${name}" at ${folderPath}` }],
+    }
+  })
+
+  server.registerTool('delete_folder', {
+    title: 'Delete Folder',
+    description: 'Delete a folder and all its contents from a cookbook.',
+    inputSchema: {
+      owner: z.string().describe('Repository owner'),
+      repo: z.string().describe('Repository name'),
+      path: z.string().describe('Folder path to delete'),
+      branch: z.string().optional().describe('Branch name'),
+    },
+    annotations: {
+      readOnlyHint: false,
+      destructiveHint: true,
+      openWorldHint: false,
+    },
+  }, async ({ owner, repo, path, branch }, extra) => {
+    const token = getToken(extra.authInfo as McpAuthInfo | undefined)
+
+    async function collectFiles(dirPath: string): Promise<Array<{ path: string; sha: string }>> {
+      const items = await github.listContents(token, owner, repo, dirPath, branch)
+      const files: Array<{ path: string; sha: string }> = []
+      for (const item of items) {
+        if (item.type === 'file') {
+          files.push({ path: item.path, sha: item.sha })
+        } else if (item.type === 'dir') {
+          files.push(...await collectFiles(item.path))
+        }
+      }
+      return files
+    }
+
+    const files = await collectFiles(path)
+    for (const file of files) {
+      await github.deleteFile(
+        token, owner, repo, file.path, file.sha,
+        `Delete folder "${path}"`, branch,
+      )
+    }
+    return {
+      content: [{ type: 'text' as const, text: `Deleted folder "${path}" (${files.length} files)` }],
     }
   })
 
@@ -235,40 +348,20 @@ export function registerRecipeTools(server: McpServer) {
       'openai/toolInvocation/invoking': 'Searching recipes...',
       'openai/toolInvocation/invoked': 'Search complete!',
     },
-  }, async ({ owner, repo, query, branch }, extra) => {
+  }, async ({ owner, repo, query }, extra) => {
     const token = getToken(extra.authInfo as McpAuthInfo | undefined)
-    const q = query.toLowerCase()
-
-    const contents = await github.listContents(token, owner, repo, '', branch)
-    const results: Array<{ path: string; title: string; match: string }> = []
-
-    for (const item of contents) {
-      if (item.type === 'file' && item.name.endsWith('.md') && item.name !== 'README.md') {
-        try {
-          const file = await github.getFile(token, owner, repo, item.path, branch)
-          const { frontmatter, body } = parseRecipeContent(file.content!)
-          const title = (frontmatter.title as string) ?? item.name
-          const tags = (frontmatter.tags as string[]) ?? []
-
-          if (
-            title.toLowerCase().includes(q) ||
-            tags.some((t: string) => t.toLowerCase().includes(q)) ||
-            body.toLowerCase().includes(q)
-          ) {
-            let match = 'content'
-            if (title.toLowerCase().includes(q)) match = 'title'
-            else if (tags.some((t: string) => t.toLowerCase().includes(q))) match = 'tag'
-            results.push({ path: item.path, title, match })
-          }
-        } catch {
-          // Skip files that can't be read
-        }
-      }
-    }
+    const searchResult = await github.searchCode(token, owner, repo, query)
+    const results = searchResult.items
+      .filter(item => item.name.endsWith('.md') && !item.name.startsWith('.') && item.name !== 'README.md')
+      .map(item => ({
+        name: item.name,
+        path: item.path,
+        fragment: item.text_matches?.[0]?.fragment?.slice(0, 120),
+      }))
     return {
       content: [{
         type: 'text' as const,
-        text: JSON.stringify(results, null, 2),
+        text: JSON.stringify({ total: searchResult.total_count, results }, null, 2),
       }],
     }
   })

@@ -1,13 +1,19 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef, useCallback } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import { recipeQueryOptions } from '@/lib/queries/recipes'
+import { recipeQueryOptions, useDuplicateRecipe } from '@/lib/queries/recipes'
+import { lastCommitQueryOptions } from '@/lib/queries/history'
+import { timeAgo } from '@/lib/utils'
+import { PROSE_CLASSES } from '@/lib/constants'
+import { useClickOutside } from '@/hooks/use-click-outside'
+import { AsciiHeader } from './ascii-header'
 import { RecipeDelete } from './recipe-delete'
-import type { RecipeFrontmatter } from '@/types'
+import { MoveToFolder } from './move-to-folder'
 
 interface RecipeViewerProps {
   owner: string
@@ -16,28 +22,51 @@ interface RecipeViewerProps {
   branch?: string
 }
 
-function AsciiHeader({ frontmatter }: { frontmatter: RecipeFrontmatter }) {
-  const meta: string[] = []
-  if (frontmatter.servings) meta.push(`${frontmatter.servings} srv`)
+function ActionsMenu({
+  onDuplicate,
+  onMove,
+  onDelete,
+  duplicating,
+}: {
+  onDuplicate: () => void
+  onMove: () => void
+  onDelete: () => void
+  duplicating: boolean
+}) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  const closeMenu = useCallback(() => setOpen(false), [])
+  useClickOutside(ref, closeMenu)
 
   return (
-    <div className="border border-border p-4 mb-6 inline-block">
-      <div className="text-foreground text-base font-bold">
-        {frontmatter.title || 'Untitled Recipe'}
-      </div>
-      {meta.length > 0 && (
-        <div className="text-muted-foreground text-sm mt-1">
-          {meta.join(' | ')}
-        </div>
-      )}
-      {frontmatter.tags && frontmatter.tags.length > 0 && (
-        <div className="text-muted-foreground text-sm mt-1">
-          tags: {frontmatter.tags.join(', ')}
-        </div>
-      )}
-      {frontmatter.source && (
-        <div className="text-muted-foreground text-sm mt-1">
-          source: {frontmatter.source}
+    <div className="relative" ref={ref}>
+      <button
+        onClick={() => setOpen(!open)}
+        className="border border-border px-3 py-1 text-sm hover:bg-muted text-muted-foreground whitespace-nowrap"
+      >
+        [ ... ]
+      </button>
+      {open && (
+        <div className="absolute top-full left-0 mt-1 z-10 border border-border bg-background min-w-[140px]">
+          <button
+            disabled={duplicating}
+            onClick={() => { onDuplicate(); setOpen(false) }}
+            className="w-full text-left px-3 py-1.5 text-sm text-foreground hover:bg-muted/50 disabled:opacity-50"
+          >
+            {duplicating ? '...' : 'duplicate'}
+          </button>
+          <button
+            onClick={() => { onMove(); setOpen(false) }}
+            className="w-full text-left px-3 py-1.5 text-sm text-foreground hover:bg-muted/50 border-t border-border"
+          >
+            move
+          </button>
+          <button
+            onClick={() => { onDelete(); setOpen(false) }}
+            className="w-full text-left px-3 py-1.5 text-sm text-destructive hover:bg-destructive/10 border-t border-border"
+          >
+            delete
+          </button>
         </div>
       )}
     </div>
@@ -45,7 +74,11 @@ function AsciiHeader({ frontmatter }: { frontmatter: RecipeFrontmatter }) {
 }
 
 export function RecipeViewer({ owner, repo, path, branch }: RecipeViewerProps) {
-  const [showDelete, setShowDelete] = useState(false)
+  const [openDialog, setOpenDialog] = useState<'delete' | 'move' | null>(null)
+  const router = useRouter()
+  const duplicate = useDuplicateRecipe(owner, repo)
+  const { data: commits } = useQuery(lastCommitQueryOptions(owner, repo, path, branch))
+  const lastEdited = commits?.[0] ? timeAgo(commits[0].commit.author.date) : undefined
   const { data: recipe, isLoading, error } = useQuery(
     recipeQueryOptions(owner, repo, path, branch)
   )
@@ -73,9 +106,24 @@ export function RecipeViewer({ owner, repo, path, branch }: RecipeViewerProps) {
   const editPath = `/cookbook/${owner}/${repo}/recipe/${path}/edit`
   const historyPath = `/cookbook/${owner}/${repo}/recipe/${path}/history`
 
+  const handleDuplicate = () => {
+    duplicate.mutate(
+      {
+        sourcePath: path,
+        branch,
+      },
+      {
+        onSuccess: () => {
+          const copyPath = path.replace(/\.md$/, '-copy.md')
+          router.push(`/cookbook/${owner}/${repo}/recipe/${copyPath}`)
+        },
+      },
+    )
+  }
+
   return (
     <div className="font-mono">
-      <AsciiHeader frontmatter={recipe.frontmatter} />
+      <AsciiHeader frontmatter={recipe.frontmatter} lastEdited={lastEdited} />
 
       <div className="flex flex-wrap gap-2 mb-6">
         <Link
@@ -88,30 +136,39 @@ export function RecipeViewer({ owner, repo, path, branch }: RecipeViewerProps) {
           href={historyPath}
           className="border border-border px-3 py-1 text-sm hover:bg-muted text-foreground whitespace-nowrap"
         >
-          [ History ]
+          [ Commits ]
         </Link>
-        <button
-          onClick={() => setShowDelete(true)}
-          className="border border-border px-3 py-1 text-sm hover:bg-destructive/20 text-destructive whitespace-nowrap"
-        >
-          [ Delete ]
-        </button>
+        <ActionsMenu
+          onDuplicate={handleDuplicate}
+          onMove={() => setOpenDialog('move')}
+          onDelete={() => setOpenDialog('delete')}
+          duplicating={duplicate.isPending}
+        />
       </div>
 
-      <div className="prose prose-invert max-w-none text-foreground [&_h1]:text-foreground [&_h2]:text-foreground [&_h3]:text-foreground [&_h4]:text-foreground [&_p]:text-foreground [&_li]:text-foreground [&_a]:text-primary [&_strong]:text-foreground [&_code]:text-secondary [&_code]:bg-muted [&_code]:px-1 [&_pre]:bg-card [&_pre]:border [&_pre]:border-border [&_blockquote]:border-primary [&_blockquote]:text-muted-foreground [&_table]:border-border [&_th]:border-border [&_td]:border-border">
+      <div className={PROSE_CLASSES}>
         <ReactMarkdown remarkPlugins={[remarkGfm]}>
           {recipe.body}
         </ReactMarkdown>
       </div>
 
-      {showDelete && (
+      {openDialog === 'move' && (
+        <MoveToFolder
+          owner={owner}
+          repo={repo}
+          path={path}
+          onClose={() => setOpenDialog(null)}
+        />
+      )}
+
+      {openDialog === 'delete' && (
         <RecipeDelete
           owner={owner}
           repo={repo}
           path={path}
           sha={recipe.sha}
           title={recipe.frontmatter.title}
-          onClose={() => setShowDelete(false)}
+          onClose={() => setOpenDialog(null)}
         />
       )}
     </div>

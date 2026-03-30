@@ -40,6 +40,16 @@ export interface GitHubContent {
   download_url: string | null
 }
 
+export interface GitHubCommitFile {
+  sha: string
+  filename: string
+  status: 'added' | 'removed' | 'modified' | 'renamed'
+  additions: number
+  deletions: number
+  patch?: string
+  previous_filename?: string
+}
+
 export interface GitHubCommit {
   sha: string
   commit: {
@@ -47,6 +57,7 @@ export interface GitHubCommit {
     author: { name: string; date: string }
   }
   author: { login: string; avatar_url: string } | null
+  files?: GitHubCommitFile[]
 }
 
 export interface GitHubUser {

@@ -15,4 +15,5 @@ export {
   deleteFile,
   listCommits,
   getCommit,
+  searchCode,
 } from '@/lib/github'

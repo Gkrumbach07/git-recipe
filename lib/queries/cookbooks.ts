@@ -2,15 +2,8 @@
 
 import { queryOptions, useMutation, useQueryClient } from '@tanstack/react-query'
 import * as github from '@/lib/github'
+import { fetchWithToken } from '@/lib/fetch-with-token'
 import type { Cookbook, CreateCookbookData } from '@/types'
-
-async function fetchWithToken<T>(
-  fn: (token: string) => Promise<T>,
-): Promise<T> {
-  const res = await fetch('/api/auth/token')
-  const { token } = await res.json()
-  return fn(token)
-}
 
 export function cookbooksQueryOptions(token?: string) {
   return queryOptions({
@@ -18,16 +11,15 @@ export function cookbooksQueryOptions(token?: string) {
     queryFn: async () => {
       const doFetch = async (t: string) => {
         const repos = await github.listRepos(t)
-        const cookbooks: Cookbook[] = []
-        for (const repo of repos) {
-          try {
+        const results = await Promise.allSettled(
+          repos.map(async (repo) => {
             await github.getFile(t, repo.owner.login, repo.name, '.gitrecipe')
-            cookbooks.push(repo)
-          } catch {
-            // Not a cookbook — skip
-          }
-        }
-        return cookbooks
+            return repo
+          }),
+        )
+        return results
+          .filter((r): r is PromiseFulfilledResult<Cookbook> => r.status === 'fulfilled')
+          .map((r) => r.value)
       }
       return token ? doFetch(token) : fetchWithToken(doFetch)
     },

@@ -2,15 +2,19 @@ import { dehydrate, HydrationBoundary } from '@tanstack/react-query'
 import { getQueryClient } from '@/app/get-query-client'
 import { prefetchRecipe } from '@/lib/queries/server-prefetch'
 import { RecipeViewer } from '@/components/recipe/recipe-viewer'
+import { RecipeAtCommit } from '@/components/recipe/recipe-at-commit'
 import { Breadcrumb } from '@/components/layout/breadcrumb'
 import { EditRecipeClient } from './edit-client'
 
 export default async function RecipePage({
   params,
+  searchParams,
 }: {
   params: Promise<{ owner: string; repo: string; path: string[] }>
+  searchParams: Promise<{ at?: string }>
 }) {
   const { owner, repo, path } = await params
+  const { at: atCommit } = await searchParams
   const lastSegment = path[path.length - 1]
 
   const isEdit = lastSegment === 'edit'
@@ -29,7 +33,7 @@ export default async function RecipePage({
     return (
       <div className="p-8">
         <Breadcrumb owner={owner} repo={repo} path={recipePath} />
-        <h1 className="font-mono text-lg text-foreground mb-4">[ recipe history ]</h1>
+        <h1 className="font-mono text-lg text-foreground mb-4">[ recipe commits ]</h1>
         <HydrationBoundary state={dehydrate(historyQueryClient)}>
           <HistoryList owner={owner} repo={repo} path={recipePath} />
         </HydrationBoundary>
@@ -39,9 +43,8 @@ export default async function RecipePage({
 
   const queryClient = getQueryClient()
 
-  void prefetchRecipe(queryClient, owner, repo, recipePath)
-
   if (isEdit) {
+    void prefetchRecipe(queryClient, owner, repo, recipePath)
     return (
       <div className="p-8">
         <Breadcrumb owner={owner} repo={repo} path={recipePath} />
@@ -56,6 +59,22 @@ export default async function RecipePage({
       </div>
     )
   }
+
+  if (atCommit) {
+    return (
+      <div className="p-8">
+        <Breadcrumb owner={owner} repo={repo} path={recipePath} />
+        <RecipeAtCommit
+          owner={owner}
+          repo={repo}
+          path={recipePath}
+          sha={atCommit}
+        />
+      </div>
+    )
+  }
+
+  void prefetchRecipe(queryClient, owner, repo, recipePath)
 
   return (
     <div className="p-8">

@@ -29,7 +29,7 @@ export default async function CookbookHistoryPage({
             {owner}/{repo}
           </Link>
           <span>/</span>
-          <span className="text-foreground">history</span>
+          <span className="text-foreground">commits</span>
         </div>
         <h1 className="text-lg text-foreground mb-4">[ commits ]</h1>
         <HistoryList owner={owner} repo={repo} />

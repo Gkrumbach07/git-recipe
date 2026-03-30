@@ -189,13 +189,56 @@ export function listCommits(
   repo: string,
   path?: string,
   branch?: string,
+  page = 1,
+  perPage = 30,
 ): Promise<GitHubCommit[]> {
-  const params = new URLSearchParams({ per_page: '100' })
+  const params = new URLSearchParams({
+    per_page: String(perPage),
+    page: String(page),
+  })
   if (path) params.set('path', path)
   if (branch) params.set('sha', branch)
   return githubFetch<GitHubCommit[]>(
     token,
     `/repos/${owner}/${repo}/commits?${params}`,
+  )
+}
+
+// ── Search ──
+
+export interface GitHubSearchResult {
+  total_count: number
+  items: Array<{
+    name: string
+    path: string
+    sha: string
+    html_url: string
+    repository: { full_name: string }
+    text_matches?: Array<{
+      fragment: string
+      matches: Array<{ text: string; indices: number[] }>
+    }>
+  }>
+}
+
+export function searchCode(
+  token: string,
+  owner: string,
+  repo: string,
+  query: string,
+): Promise<GitHubSearchResult> {
+  const params = new URLSearchParams({
+    q: `${query} repo:${owner}/${repo} extension:md`,
+    per_page: '30',
+  })
+  return githubFetch<GitHubSearchResult>(
+    token,
+    `/search/code?${params}`,
+    {
+      headers: {
+        Accept: 'application/vnd.github.text-match+json',
+      },
+    },
   )
 }
 

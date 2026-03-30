@@ -1,0 +1,2 @@
+export const PROSE_CLASSES =
+  'prose prose-invert max-w-none text-foreground [&_h1]:text-foreground [&_h2]:text-foreground [&_h3]:text-foreground [&_h4]:text-foreground [&_p]:text-foreground [&_li]:text-foreground [&_a]:text-primary [&_strong]:text-foreground [&_code]:text-secondary [&_code]:bg-muted [&_code]:px-1 [&_pre]:bg-card [&_pre]:border [&_pre]:border-border [&_blockquote]:border-primary [&_blockquote]:text-muted-foreground [&_table]:border-border [&_th]:border-border [&_td]:border-border'

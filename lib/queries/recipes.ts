@@ -3,19 +3,12 @@
 import { queryOptions, useMutation, useQueryClient } from '@tanstack/react-query'
 import * as github from '@/lib/github'
 import { parseRecipe, serializeRecipe } from '@/lib/recipe'
+import { fetchWithToken } from '@/lib/fetch-with-token'
 import type {
   ParsedRecipe,
   CreateRecipeData,
   UpdateRecipeData,
 } from '@/types'
-
-async function fetchWithToken<T>(
-  fn: (token: string) => Promise<T>,
-): Promise<T> {
-  const res = await fetch('/api/auth/token')
-  const { token } = await res.json()
-  return fn(token)
-}
 
 export function recipesQueryOptions(
   owner: string,
@@ -185,6 +178,68 @@ export function useDeleteRecipe(owner: string, repo: string) {
   })
 }
 
+export function useDuplicateRecipe(owner: string, repo: string) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async ({
+      sourcePath,
+      branch,
+    }: {
+      sourcePath: string
+      branch?: string
+    }) => {
+      const res = await fetch('/api/auth/token')
+      const { token } = await res.json()
+
+      const file = await github.getFile(token, owner, repo, sourcePath, branch)
+      const { frontmatter, body } = parseRecipe(file.content!, file.sha)
+
+      const baseName = sourcePath.replace(/\.md$/, '')
+      const newPath = `${baseName}-copy.md`
+      const newFrontmatter = { ...frontmatter, title: `${frontmatter.title} (copy)` }
+      const content = serializeRecipe(newFrontmatter, body)
+
+      return github.createOrUpdateFile(
+        token,
+        owner,
+        repo,
+        newPath,
+        content,
+        undefined,
+        `Duplicate "${frontmatter.title}"`,
+        branch,
+      )
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: [owner, repo, 'recipes'],
+      })
+    },
+  })
+}
+
+export function searchRecipesQueryOptions(
+  owner: string,
+  repo: string,
+  query: string,
+  token?: string,
+) {
+  return queryOptions({
+    queryKey: [owner, repo, 'search', query],
+    queryFn: () => {
+      const doFetch = (t: string) => github.searchCode(t, owner, repo, query)
+      return token ? doFetch(token) : fetchWithToken(doFetch)
+    },
+    enabled: query.length >= 2,
+    staleTime: 60 * 1000,
+    retry: (failureCount, error) => {
+      if (error instanceof github.GitHubError && error.status === 403) return false
+      return failureCount < 2
+    },
+  })
+}
+
 export function useMoveRecipe(owner: string, repo: string) {
   const queryClient = useQueryClient()
 
@@ -231,6 +286,10 @@ export function useMoveRecipe(owner: string, repo: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: [owner, repo, 'recipes'],
+        refetchType: 'all',
+      })
+      queryClient.invalidateQueries({
+        queryKey: [owner, repo, 'last-commit'],
       })
     },
   })

@@ -15,7 +15,7 @@ export function parseRecipe(
 }
 
 export function serializeRecipe(
-  frontmatter: RecipeFrontmatter,
+  frontmatter: RecipeFrontmatter | Record<string, unknown>,
   body: string,
 ): string {
   return matter.stringify(body, frontmatter)

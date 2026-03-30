@@ -78,9 +78,10 @@ export async function prefetchHistory(
   branch?: string,
 ) {
   const token = await getToken()
-  await queryClient.prefetchQuery({
+  await queryClient.prefetchInfiniteQuery({
     queryKey: [owner, repo, 'history', path, branch].filter(Boolean) as string[],
-    queryFn: () => github.listCommits(token, owner, repo, path, branch),
+    queryFn: () => github.listCommits(token, owner, repo, path, branch, 1, 30),
+    initialPageParam: 1,
     staleTime: 5 * 60 * 1000,
   })
 }
