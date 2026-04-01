@@ -6,11 +6,20 @@ import { useRouter } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import { recipeQueryOptions, useDuplicateRecipe } from '@/lib/queries/recipes'
+import { recipeQueryOptions, useDuplicateRecipe, useCookRecipe } from '@/lib/queries/recipes'
 import { lastCommitQueryOptions } from '@/lib/queries/history'
 import { timeAgo } from '@/lib/utils'
 import { PROSE_CLASSES } from '@/lib/constants'
 import { useClickOutside } from '@/hooks/use-click-outside'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
 import { AsciiHeader } from './ascii-header'
 import { RecipeDelete } from './recipe-delete'
 import { MoveToFolder } from './move-to-folder'
@@ -73,10 +82,61 @@ function ActionsMenu({
   )
 }
 
+function CookedDialog({
+  onConfirm,
+  onClose,
+  isPending,
+  error,
+}: {
+  onConfirm: (note: string) => void
+  onClose: () => void
+  isPending: boolean
+  error: Error | null
+}) {
+  const [note, setNote] = useState('')
+
+  return (
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="font-mono">
+        <DialogHeader>
+          <DialogTitle>[ i cooked this ]</DialogTitle>
+          <DialogDescription>
+            add a note about this cook (optional):
+          </DialogDescription>
+        </DialogHeader>
+        <textarea
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+          placeholder="doubled the garlic, no regrets..."
+          className="w-full bg-background border border-border p-2 text-sm text-foreground placeholder:text-muted-foreground resize-none h-20 focus:outline-none focus:border-primary"
+          autoFocus
+        />
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>
+            [ Cancel ]
+          </Button>
+          <Button
+            onClick={() => onConfirm(note)}
+            disabled={isPending}
+          >
+            {isPending ? '[ ... ]' : '[ Log It ]'}
+          </Button>
+        </DialogFooter>
+        {error && (
+          <p className="text-destructive text-sm">
+            ERR: {error.message}
+          </p>
+        )}
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 export function RecipeViewer({ owner, repo, path, branch }: RecipeViewerProps) {
-  const [openDialog, setOpenDialog] = useState<'delete' | 'move' | null>(null)
+  const [openDialog, setOpenDialog] = useState<'delete' | 'move' | 'cooked' | null>(null)
   const router = useRouter()
   const duplicate = useDuplicateRecipe(owner, repo)
+  const cook = useCookRecipe(owner, repo)
   const { data: commits } = useQuery(lastCommitQueryOptions(owner, repo, path, branch))
   const lastEdited = commits?.[0] ? timeAgo(commits[0].commit.author.date) : undefined
   const { data: recipe, isLoading, error } = useQuery(
@@ -138,6 +198,12 @@ export function RecipeViewer({ owner, repo, path, branch }: RecipeViewerProps) {
         >
           [ Commits ]
         </Link>
+        <button
+          onClick={() => setOpenDialog('cooked')}
+          className="border border-border px-3 py-1 text-sm hover:bg-muted text-foreground whitespace-nowrap"
+        >
+          [ I Cooked This ]
+        </button>
         <ActionsMenu
           onDuplicate={handleDuplicate}
           onMove={() => setOpenDialog('move')}
@@ -151,6 +217,20 @@ export function RecipeViewer({ owner, repo, path, branch }: RecipeViewerProps) {
           {recipe.body}
         </ReactMarkdown>
       </div>
+
+      {openDialog === 'cooked' && recipe && (
+        <CookedDialog
+          isPending={cook.isPending}
+          error={cook.error}
+          onConfirm={(note) => {
+            cook.mutate(
+              { path, note: note || undefined, branch, recipe },
+              { onSuccess: () => setOpenDialog(null) },
+            )
+          }}
+          onClose={() => setOpenDialog(null)}
+        />
+      )}
 
       {openDialog === 'move' && (
         <MoveToFolder

@@ -112,23 +112,22 @@ export function useRevertRecipe(owner: string, repo: string) {
       sha: string
       title: string
     }) => {
-      const res = await fetch('/api/auth/token')
-      const { token } = await res.json()
+      return fetchWithToken(async (token) => {
+        const file = await github.getFile(token, owner, repo, path, sha)
+        const oldContent = Buffer.from(file.content!, 'base64').toString('utf-8')
 
-      const file = await github.getFile(token, owner, repo, path, sha)
-      const oldContent = Buffer.from(file.content!, 'base64').toString('utf-8')
+        const current = await github.getFile(token, owner, repo, path)
 
-      const current = await github.getFile(token, owner, repo, path)
-
-      return github.createOrUpdateFile(
-        token,
-        owner,
-        repo,
-        path,
-        oldContent,
-        current.sha,
-        `Revert "${title}" to ${sha.slice(0, 7)}`,
-      )
+        return github.createOrUpdateFile(
+          token,
+          owner,
+          repo,
+          path,
+          oldContent,
+          current.sha,
+          `Revert "${title}" to ${sha.slice(0, 7)}`,
+        )
+      })
     },
     onSuccess: (_data, vars) => {
       queryClient.invalidateQueries({

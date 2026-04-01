@@ -17,20 +17,19 @@ export function useCreateFolder(owner: string, repo: string) {
       parentPath?: string
       branch?: string
     }) => {
-      const res = await fetch('/api/auth/token')
-      const { token } = await res.json()
-
-      const folderPath = parentPath ? `${parentPath}/${name}` : name
-      return github.createOrUpdateFile(
-        token,
-        owner,
-        repo,
-        `${folderPath}/.gitkeep`,
-        '',
-        undefined,
-        `Create folder "${name}"`,
-        branch,
-      )
+      return fetchWithToken((token) => {
+        const folderPath = parentPath ? `${parentPath}/${name}` : name
+        return github.createOrUpdateFile(
+          token,
+          owner,
+          repo,
+          `${folderPath}/.gitkeep`,
+          '',
+          undefined,
+          `Create folder "${name}"`,
+          branch,
+        )
+      })
     },
     onSuccess: () => {
       queryClient.invalidateQueries({

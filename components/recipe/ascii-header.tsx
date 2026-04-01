@@ -9,6 +9,7 @@ export function AsciiHeader({
 }) {
   const meta: string[] = []
   if (frontmatter.servings) meta.push(`${frontmatter.servings} srv`)
+  if (frontmatter.cooked) meta.push(`cooked ${frontmatter.cooked}x`)
 
   return (
     <div className="border border-border p-4 mb-6 inline-block">

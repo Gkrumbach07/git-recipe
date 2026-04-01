@@ -2,7 +2,7 @@ import { z } from 'zod'
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import * as github from '../github'
 import { getToken, type McpAuthInfo } from '../auth'
-import { parseRecipe, serializeRecipe, slugify } from '../../lib/recipe'
+import { parseRecipe, serializeRecipe, slugify, buildCookUpdate } from '../../lib/recipe'
 
 export function registerRecipeTools(server: McpServer) {
   server.registerTool('list_recipes', {
@@ -326,6 +326,43 @@ export function registerRecipeTools(server: McpServer) {
     }
     return {
       content: [{ type: 'text' as const, text: `Deleted folder "${path}" (${files.length} files)` }],
+    }
+  })
+
+  server.registerTool('cook_recipe', {
+    title: 'Mark Recipe as Cooked',
+    description: 'Log that you cooked a recipe. Increments the cooked count and creates a commit in the history.',
+    inputSchema: {
+      owner: z.string().describe('Repository owner'),
+      repo: z.string().describe('Repository name'),
+      path: z.string().describe('File path of the recipe'),
+      note: z.string().optional().describe('Optional note about this cook (e.g., "doubled the garlic")'),
+      branch: z.string().optional().describe('Branch name'),
+    },
+    annotations: {
+      readOnlyHint: false,
+      destructiveHint: false,
+      openWorldHint: false,
+    },
+    _meta: {
+      'openai/toolInvocation/invoking': 'Logging your cook...',
+      'openai/toolInvocation/invoked': 'Logged!',
+    },
+  }, async ({ owner, repo, path, note, branch }, extra) => {
+    const token = getToken(extra.authInfo as McpAuthInfo | undefined)
+    const file = await github.getFile(token, owner, repo, path, branch)
+    const { frontmatter, body } = parseRecipe(file.content!, file.sha)
+    const { content, message, cookedCount } = buildCookUpdate(frontmatter, body, note)
+
+    await github.createOrUpdateFile(
+      token, owner, repo, path, content, file.sha,
+      message, branch,
+    )
+    return {
+      content: [{
+        type: 'text' as const,
+        text: `Logged cook #${cookedCount} for "${frontmatter.title}"${note ? ` — ${note}` : ''}`,
+      }],
     }
   })
 

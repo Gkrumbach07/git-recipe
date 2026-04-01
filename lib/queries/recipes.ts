@@ -2,7 +2,7 @@
 
 import { queryOptions, useMutation, useQueryClient } from '@tanstack/react-query'
 import * as github from '@/lib/github'
-import { parseRecipe, serializeRecipe } from '@/lib/recipe'
+import { parseRecipe, serializeRecipe, buildCookUpdate } from '@/lib/recipe'
 import { fetchWithToken } from '@/lib/fetch-with-token'
 import type {
   ParsedRecipe,
@@ -52,23 +52,22 @@ export function useCreateRecipe(owner: string, repo: string) {
 
   return useMutation({
     mutationFn: async (data: CreateRecipeData) => {
-      const res = await fetch('/api/auth/token')
-      const { token } = await res.json()
+      return fetchWithToken((token) => {
+        const content = serializeRecipe(data.frontmatter, data.body)
+        const message =
+          data.message ?? `Add "${data.frontmatter.title}"`
 
-      const content = serializeRecipe(data.frontmatter, data.body)
-      const message =
-        data.message ?? `Add "${data.frontmatter.title}"`
-
-      return github.createOrUpdateFile(
-        token,
-        owner,
-        repo,
-        data.path,
-        content,
-        undefined,
-        message,
-        data.branch,
-      )
+        return github.createOrUpdateFile(
+          token,
+          owner,
+          repo,
+          data.path,
+          content,
+          undefined,
+          message,
+          data.branch,
+        )
+      })
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
@@ -83,26 +82,25 @@ export function useUpdateRecipe(owner: string, repo: string) {
 
   return useMutation({
     mutationFn: async (data: UpdateRecipeData) => {
-      const res = await fetch('/api/auth/token')
-      const { token } = await res.json()
+      return fetchWithToken((token) => {
+        const content = serializeRecipe(
+          data.frontmatter,
+          data.body,
+        )
+        const message =
+          data.message ?? `Update "${data.frontmatter.title}"`
 
-      const content = serializeRecipe(
-        data.frontmatter,
-        data.body,
-      )
-      const message =
-        data.message ?? `Update "${data.frontmatter.title}"`
-
-      return github.createOrUpdateFile(
-        token,
-        owner,
-        repo,
-        data.path,
-        content,
-        data.sha,
-        message,
-        data.branch,
-      )
+        return github.createOrUpdateFile(
+          token,
+          owner,
+          repo,
+          data.path,
+          content,
+          data.sha,
+          message,
+          data.branch,
+        )
+      })
     },
     onMutate: async (newData) => {
       await queryClient.cancelQueries({
@@ -158,16 +156,16 @@ export function useDeleteRecipe(owner: string, repo: string) {
       title: string
       branch?: string
     }) => {
-      const res = await fetch('/api/auth/token')
-      const { token } = await res.json()
-      return github.deleteFile(
-        token,
-        owner,
-        repo,
-        path,
-        sha,
-        `Delete "${title}"`,
-        branch,
+      return fetchWithToken((token) =>
+        github.deleteFile(
+          token,
+          owner,
+          repo,
+          path,
+          sha,
+          `Delete "${title}"`,
+          branch,
+        )
       )
     },
     onSuccess: () => {
@@ -189,27 +187,26 @@ export function useDuplicateRecipe(owner: string, repo: string) {
       sourcePath: string
       branch?: string
     }) => {
-      const res = await fetch('/api/auth/token')
-      const { token } = await res.json()
+      return fetchWithToken(async (token) => {
+        const file = await github.getFile(token, owner, repo, sourcePath, branch)
+        const { frontmatter, body } = parseRecipe(file.content!, file.sha)
 
-      const file = await github.getFile(token, owner, repo, sourcePath, branch)
-      const { frontmatter, body } = parseRecipe(file.content!, file.sha)
+        const baseName = sourcePath.replace(/\.md$/, '')
+        const newPath = `${baseName}-copy.md`
+        const newFrontmatter = { ...frontmatter, title: `${frontmatter.title} (copy)` }
+        const content = serializeRecipe(newFrontmatter, body)
 
-      const baseName = sourcePath.replace(/\.md$/, '')
-      const newPath = `${baseName}-copy.md`
-      const newFrontmatter = { ...frontmatter, title: `${frontmatter.title} (copy)` }
-      const content = serializeRecipe(newFrontmatter, body)
-
-      return github.createOrUpdateFile(
-        token,
-        owner,
-        repo,
-        newPath,
-        content,
-        undefined,
-        `Duplicate "${frontmatter.title}"`,
-        branch,
-      )
+        return github.createOrUpdateFile(
+          token,
+          owner,
+          repo,
+          newPath,
+          content,
+          undefined,
+          `Duplicate "${frontmatter.title}"`,
+          branch,
+        )
+      })
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
@@ -240,6 +237,51 @@ export function searchRecipesQueryOptions(
   })
 }
 
+export function useCookRecipe(owner: string, repo: string) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async ({
+      path,
+      note,
+      branch,
+      recipe,
+    }: {
+      path: string
+      note?: string
+      branch?: string
+      recipe: ParsedRecipe
+    }) => {
+      return fetchWithToken(async (token) => {
+        const { content, message } = buildCookUpdate(
+          recipe.frontmatter,
+          recipe.body,
+          note,
+        )
+
+        return github.createOrUpdateFile(
+          token,
+          owner,
+          repo,
+          path,
+          content,
+          recipe.sha,
+          message,
+          branch,
+        )
+      })
+    },
+    onSettled: (_data, _err, vars) => {
+      queryClient.invalidateQueries({
+        queryKey: [owner, repo, 'recipe', vars.path],
+      })
+      queryClient.invalidateQueries({
+        queryKey: [owner, repo, 'last-commit'],
+      })
+    },
+  })
+}
+
 export function useMoveRecipe(owner: string, repo: string) {
   const queryClient = useQueryClient()
 
@@ -253,35 +295,34 @@ export function useMoveRecipe(owner: string, repo: string) {
       newPath: string
       branch?: string
     }) => {
-      const res = await fetch('/api/auth/token')
-      const { token } = await res.json()
+      return fetchWithToken(async (token) => {
+        // Read old file
+        const file = await github.getFile(token, owner, repo, oldPath, branch)
+        const content = Buffer.from(file.content!, 'base64').toString('utf-8')
 
-      // Read old file
-      const file = await github.getFile(token, owner, repo, oldPath, branch)
-      const content = Buffer.from(file.content!, 'base64').toString('utf-8')
+        // Create new file
+        await github.createOrUpdateFile(
+          token,
+          owner,
+          repo,
+          newPath,
+          content,
+          undefined,
+          `Move ${oldPath} to ${newPath}`,
+          branch,
+        )
 
-      // Create new file
-      await github.createOrUpdateFile(
-        token,
-        owner,
-        repo,
-        newPath,
-        content,
-        undefined,
-        `Move ${oldPath} to ${newPath}`,
-        branch,
-      )
-
-      // Delete old file
-      await github.deleteFile(
-        token,
-        owner,
-        repo,
-        oldPath,
-        file.sha,
-        `Move ${oldPath} to ${newPath}`,
-        branch,
-      )
+        // Delete old file
+        await github.deleteFile(
+          token,
+          owner,
+          repo,
+          oldPath,
+          file.sha,
+          `Move ${oldPath} to ${newPath}`,
+          branch,
+        )
+      })
     },
     onSuccess: () => {
       queryClient.invalidateQueries({

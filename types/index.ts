@@ -3,6 +3,7 @@ export interface RecipeFrontmatter {
   tags?: string[]
   servings?: number
   source?: string
+  cooked?: number
 }
 
 export interface ParsedRecipe {

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { getSession, refreshSessionIfNeeded } from '@/lib/auth'
+import { getSession, refreshSessionIfNeeded, clearSessionAsync } from '@/lib/auth'
 
 export async function GET() {
   const session = await getSession()
@@ -11,6 +11,7 @@ export async function GET() {
     const refreshed = await refreshSessionIfNeeded(session)
     return NextResponse.json({ token: refreshed.accessToken })
   } catch {
-    return NextResponse.json({ error: 'Invalid session' }, { status: 401 })
+    await clearSessionAsync()
+    return NextResponse.json({ error: 'Session expired' }, { status: 401 })
   }
 }

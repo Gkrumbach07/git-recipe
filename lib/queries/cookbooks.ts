@@ -47,27 +47,26 @@ export function useCreateCookbook() {
 
   return useMutation({
     mutationFn: async (data: CreateCookbookData) => {
-      const res = await fetch('/api/auth/token')
-      const { token } = await res.json()
+      return fetchWithToken(async (token) => {
+        const repo = await github.createRepo(token, {
+          name: data.name,
+          description: data.description,
+          private: data.visibility !== 'public',
+          auto_init: true,
+        })
 
-      const repo = await github.createRepo(token, {
-        name: data.name,
-        description: data.description,
-        private: data.visibility !== 'public',
-        auto_init: true,
+        await github.createOrUpdateFile(
+          token,
+          repo.owner.login,
+          repo.name,
+          '.gitrecipe',
+          JSON.stringify({ version: 1, created: new Date().toISOString() }, null, 2),
+          undefined,
+          'Initialize cookbook',
+        )
+
+        return repo
       })
-
-      await github.createOrUpdateFile(
-        token,
-        repo.owner.login,
-        repo.name,
-        '.gitrecipe',
-        JSON.stringify({ version: 1, created: new Date().toISOString() }, null, 2),
-        undefined,
-        'Initialize cookbook',
-      )
-
-      return repo
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['cookbooks'] })
@@ -80,9 +79,7 @@ export function useDeleteCookbook() {
 
   return useMutation({
     mutationFn: async ({ owner, repo }: { owner: string; repo: string }) => {
-      const res = await fetch('/api/auth/token')
-      const { token } = await res.json()
-      return github.deleteRepo(token, owner, repo)
+      return fetchWithToken((token) => github.deleteRepo(token, owner, repo))
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['cookbooks'] })
@@ -95,9 +92,7 @@ export function useForkCookbook() {
 
   return useMutation({
     mutationFn: async ({ owner, repo }: { owner: string; repo: string }) => {
-      const res = await fetch('/api/auth/token')
-      const { token } = await res.json()
-      return github.forkRepo(token, owner, repo)
+      return fetchWithToken((token) => github.forkRepo(token, owner, repo))
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['cookbooks'] })

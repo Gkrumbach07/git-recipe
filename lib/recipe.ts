@@ -21,6 +21,18 @@ export function serializeRecipe(
   return matter.stringify(body, frontmatter)
 }
 
+export function buildCookUpdate(
+  frontmatter: RecipeFrontmatter,
+  body: string,
+  note?: string,
+): { content: string; message: string; cookedCount: number } {
+  const updated = { ...frontmatter, cooked: (frontmatter.cooked ?? 0) + 1 }
+  const content = serializeRecipe(updated, body)
+  const parts = [`Cooked "${frontmatter.title}"`]
+  if (note) parts.push('', note)
+  return { content, message: parts.join('\n'), cookedCount: updated.cooked }
+}
+
 export function slugify(title: string): string {
   return title
     .toLowerCase()
