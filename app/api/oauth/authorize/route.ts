@@ -87,7 +87,7 @@ export async function GET(request: NextRequest) {
   })
 
   const github = getMcpGitHub()
-  const githubUrl = github.createAuthorizationURL(githubState, ['user'])
+  const githubUrl = github.createAuthorizationURL(githubState, ['repo', 'read:user'])
 
   // If test mode is enabled, show a page with both options
   if (process.env.MCP_TEST_GITHUB_TOKEN) {
